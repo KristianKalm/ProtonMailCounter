@@ -5,27 +5,29 @@
     "description": "Unofficial Proton Mail counter extension for chrome",
     "action": {
         "default_icon": {
-            "16": "images/icon.png",
-            "24": "images/icon.png",
-            "32": "images/icon.png"
+            "16": "icon/icon16.png",
+            "19": "icon/icon19.png",
+            "32": "icon/icon32.png",
+            "38": "icon/icon38.png",
+            "48": "icon/icon48.png",
+            "128": "icon/icon128.png"
         }
     },
     "background": {
         "service_worker": "service-worker.js"
     },
-    "web_accessible_resources": [
-        {
-            "matches": ["<all_urls>"],
-            "resources": ["images/icon.png"]
-        }
-    ],
     "permissions": [
         "tabs",
-        "storage"
+        "storage",
+        "background",
+        "alarms"
     ],
-	"icons": {
-		"16": "images/icon.png",
-		"48": "images/icon.png",
-		"128": "images/icon.png"
-	}
+    "icons": {
+        "16": "icon/icon16.png",
+        "19": "icon/icon19.png",
+        "32": "icon/icon32.png",
+        "38": "icon/icon38.png",
+        "48": "icon/icon48.png",
+        "128": "icon/icon128.png"
+    }
 }
