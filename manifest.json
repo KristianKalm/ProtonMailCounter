@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "ProtonMailCounter",
+    "version": "0.1.0",
+    "description": "Unofficial Proton Mail counter extension for chrome",
+    "action": {
+        "default_icon": {
+            "16": "images/icon.png",
+            "24": "images/icon.png",
+            "32": "images/icon.png"
+        }
+    },
+    "background": {
+        "service_worker": "service-worker.js"
+    },
+    "web_accessible_resources": [
+        {
+            "matches": ["<all_urls>"],
+            "resources": ["images/icon.png"]
+        }
+    ],
+    "permissions": [
+        "tabs",
+        "storage"
+    ],
+	"icons": {
+		"16": "images/icon.png",
+		"48": "images/icon.png",
+		"128": "images/icon.png"
+	}
+}
