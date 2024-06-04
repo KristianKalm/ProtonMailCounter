@@ -32,7 +32,7 @@ showStoredCount = async () => {
     });
 }
 
-function isProtonMailTabOpen(){
+isProtonMailTabOpen = async () => {
     const tabs = getAllTabs();
     let matchedTab = null;
     for (const tab of tabs) {
@@ -44,9 +44,9 @@ function isProtonMailTabOpen(){
     return matchedTab
 }
 
-const LOADING_TIME_FOR_PROTON_MAIL_INBOX = 5000
-function reloadCountInBackground() {
-    if(isProtonMailTabOpen()){
+const LOADING_TIME_FOR_PROTON_MAIL_INBOX = 5000;
+reloadCountInBackground = async () => {
+    if(await isProtonMailTabOpen()){
         return;
     }
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
