@@ -33,7 +33,7 @@ showStoredCount = async () => {
 }
 
 isProtonMailTabOpen = async () => {
-    const tabs = getAllTabs();
+    const tabs = await getAllTabs();
     let matchedTab = null;
     for (const tab of tabs) {
         if (isCurrentTabProtonMailInbox(tab.url)) {
@@ -46,7 +46,8 @@ isProtonMailTabOpen = async () => {
 
 const LOADING_TIME_FOR_PROTON_MAIL_INBOX = 5000;
 reloadCountInBackground = async () => {
-    if(await isProtonMailTabOpen()){
+    let inboxOpened = await isProtonMailTabOpen()
+    if(inboxOpened){
         return;
     }
     chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
@@ -68,13 +69,13 @@ reloadCountInBackground = async () => {
                     }
                     const tabId = tab.id;
                     setTimeout(() => {
-                        try {
-                            console.log("Backgroud tab closed");
-                            updateCountAndShowBadge();
-                            chrome.tabs.remove(tabId);
-                        }catch (error) {
-                            console.error("An error occurred:", error);
+                        if (chrome.runtime.lastError) {
+                            console.error(`Error creating tab: ${chrome.runtime.lastError.message}`);
+                            return;
                         }
+                        console.log("Backgroud tab closed");
+                        updateCountAndShowBadge();
+                        chrome.tabs.remove(tabId);
                     }, LOADING_TIME_FOR_PROTON_MAIL_INBOX);
                 });
             }
