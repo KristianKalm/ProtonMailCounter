@@ -1,7 +1,7 @@
 {
     "manifest_version": 3,
     "name": "ProtonMailCounter",
-    "version": "0.1.0",
+    "version": "0.1.3",
     "description": "Unofficial Proton Mail counter extension for chrome",
     "action": {
         "default_icon": {

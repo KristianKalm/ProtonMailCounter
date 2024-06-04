@@ -1,7 +1,7 @@
 const PROTON_DOMAIN = "https://mail.proton.me/";
 
 const ALARM_NAME = "checkUnreadCount";
-const ALARM_TIME_MINUTES = 5;
+const ALARM_TIME_MINUTES = 15;
 
 importScripts('core.js');
 let updateTimer;
