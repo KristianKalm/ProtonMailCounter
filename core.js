@@ -32,34 +32,60 @@ showStoredCount = async () => {
     });
 }
 
+function isProtonMailTabOpen(){
+    const tabs = getAllTabs();
+    let matchedTab = null;
+    for (const tab of tabs) {
+        if (isCurrentTabProtonMailInbox(tab.url)) {
+            matchedTab = tab;
+            break;
+        }
+    }
+    return matchedTab
+}
+
 const LOADING_TIME_FOR_PROTON_MAIL_INBOX = 5000
 function reloadCountInBackground() {
-    try {
-        chrome.tabs.create({
-            url: PROTON_DOMAIN,
-            pinned: true,
-            active: false
-        }, (tab) => {
-            console.log("Backgroud tab opened");
-            if (chrome.runtime.lastError) {
-                console.error(`Error creating tab: ${chrome.runtime.lastError.message}`);
-                return;
-            }
-            if (!tab) {
-                console.error('Tab is undefined');
-                return;
-            }
-            const tabId = tab.id;
-            setTimeout(() => {
-                console.log("Backgroud tab closed");
-                updateCountAndShowBadge();
-                chrome.tabs.remove(tabId);
-            }, LOADING_TIME_FOR_PROTON_MAIL_INBOX);
-        });
+    if(isProtonMailTabOpen()){
+        return;
     }
-    catch (error) {
-        console.error("An error occurred:", error);
-    }
+    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        if (tabs.length > 0) {
+            try {
+                chrome.tabs.create({
+                    url: PROTON_DOMAIN,
+                    pinned: true,
+                    active: false
+                }, (tab) => {
+                    console.log("Backgroud tab opened");
+                    if (chrome.runtime.lastError) {
+                        console.error(`Error creating tab: ${chrome.runtime.lastError.message}`);
+                        return;
+                    }
+                    if (!tab) {
+                        console.error('Tab is undefined');
+                        return;
+                    }
+                    const tabId = tab.id;
+                    setTimeout(() => {
+                        try {
+                            console.log("Backgroud tab closed");
+                            updateCountAndShowBadge();
+                            chrome.tabs.remove(tabId);
+                        }catch (error) {
+                            console.error("An error occurred:", error);
+                        }
+                    }, LOADING_TIME_FOR_PROTON_MAIL_INBOX);
+                });
+            }
+            catch (error) {
+                console.error("An error occurred:", error);
+            }
+        } else {
+          console.log("No active tab found.");
+        }
+      });
+
 }
 
 updateCountAndShowBadge = async () => {
