@@ -1,10 +1,13 @@
 getAllTabs = async () => {
-    const query = { currentWindow: true };
+    const query = {
+        currentWindow: true
+    };
     const tabs = await new Promise((resolve, reject) => {
         chrome.tabs.query(query, (result) => {
             if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
-            } else {
+            }
+            else {
                 resolve(result);
             }
         });
@@ -12,23 +15,10 @@ getAllTabs = async () => {
     return tabs;
 }
 
-const TIMEOUT_CLEAR_BADGE = 1000;
-let timeoutId;
-const clearBadge = async (count) => {
-  // Clear previous timeout if it exists
-  if (timeoutId) {
-    clearTimeout(timeoutId);
-  }
-
-  // Set a new timeout
-  timeoutId = setTimeout(async () => {
-	await chrome.action.setBadgeText({ text: '' });
-  }, TIMEOUT_CLEAR_BADGE);
-};
 
 
 const showBadge = async (count) => {
-    clearTimeout(timeoutId);
+    clearTimeout(inboxTitleLoadingTimeoutId);
     await chrome.action.setBadgeBackgroundColor({ color: '#6d4aff' });
     await chrome.action.setBadgeTextColor({ color: '#fff' });
     await chrome.action.setBadgeText({ text: count.toString() });
@@ -42,16 +32,32 @@ showStoredCount = async () => {
     });
 }
 
+const LOADING_TIME_FOR_PROTON_MAIL_INBOX = 5000
 function reloadCountInBackground() {
     try {
-        chrome.tabs.create({ url: PROTON_DOMAIN, pinned: true, active: false  }, (tab) => {
-        const tabId = tab.id;
-        setTimeout(() => {
-            updateCountAndShowBadge();
-            chrome.tabs.remove(tabId);
-        }, 5000);
+        chrome.tabs.create({
+            url: PROTON_DOMAIN,
+            pinned: true,
+            active: false
+        }, (tab) => {
+            console.log("Backgroud tab opened");
+            if (chrome.runtime.lastError) {
+                console.error(`Error creating tab: ${chrome.runtime.lastError.message}`);
+                return;
+            }
+            if (!tab) {
+                console.error('Tab is undefined');
+                return;
+            }
+            const tabId = tab.id;
+            setTimeout(() => {
+                console.log("Backgroud tab closed");
+                updateCountAndShowBadge();
+                chrome.tabs.remove(tabId);
+            }, LOADING_TIME_FOR_PROTON_MAIL_INBOX);
         });
-    } catch (error) {
+    }
+    catch (error) {
         console.error("An error occurred:", error);
     }
 }
@@ -59,53 +65,68 @@ function reloadCountInBackground() {
 updateCountAndShowBadge = async () => {
     const tabs = await getAllTabs();
     let matchedTab = null;
-    
+
     for (const tab of tabs) {
-        if (tab.url.includes(PROTON_DOMAIN_MAIL) && tab.url.includes(PROTON_DOMAIN_INBOX)) {
+        if (isCurrentTabProtonMailInbox(tab.url)) {
             matchedTab = tab;
             break;
         }
     }
-    
+
     if (matchedTab) {
-        const count = extractNumber(matchedTab.title);
-        await CountStorage.saveCount(count);
+        const count = parseUnreadCountFromTabTitle(matchedTab.title);
+        CountStorage.saveCount(count);
         if (count == 0) {
             clearBadge();
-        } else {
+        }
+        else {
             showBadge(count);
         }
-    } else {
+    }
+    else {
         showStoredCount()
     }
 }
 
-
-function extractNumber(text) {
+function parseUnreadCountFromTabTitle(text) {
     const match = text.match(/\((\d+)\)/);
     return match ? parseInt(match[1], 10) : 0;
 }
+function isCurrentTabProtonMailInbox(url){
+    return url.includes("mail.proton.me") && url.includes("inbox")
+}
 
-const UNREAD_COUNT = 'proton_unread_count';
+const LOADING_TIME_FOR_INBOX_TITLE_UPDATE = 1000;
+let inboxTitleLoadingTimeoutId;
+const clearBadge = async (count) => {
+    if (inboxTitleLoadingTimeoutId) {
+        clearTimeout(inboxTitleLoadingTimeoutId);
+    }
+    inboxTitleLoadingTimeoutId = setTimeout(async () => {
+        await chrome.action.setBadgeText({ text: '' });
+    }, LOADING_TIME_FOR_INBOX_TITLE_UPDATE);
+};
+
 class CountStorage {
-    
-    static getCount(callback) {        
-        chrome.storage.local.get([UNREAD_COUNT], (result) => {
-            const count = result[UNREAD_COUNT];
+    static UNREAD_COUNT_KEY = 'proton_unread_count';
+    static getCount(callback) {
+        chrome.storage.local.get([CountStorage.UNREAD_COUNT_KEY], (result) => {
+            const count = result[CountStorage.UNREAD_COUNT_KEY];
             if (typeof count === 'undefined') {
-                callback(0); 
-            } else {
+                callback(0);
+            }
+            else {
                 callback(count);
             }
         });
     }
-    
-    static saveCount(count) {        
-        chrome.storage.local.set({ [UNREAD_COUNT]: count }, (error) => {});
-    }
 
+    static saveCount(count) {
+        chrome.storage.local.set({
+            [CountStorage.UNREAD_COUNT_KEY]: count
+        }, (error) => {});
+    }
     static clearCount() {
-        chrome.storage.local.remove([UNREAD_COUNT], (error) => {});
+        chrome.storage.local.remove([CountStorage.UNREAD_COUNT_KEY], (error) => {});
     }
-
 }

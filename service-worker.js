@@ -1,29 +1,48 @@
-const PROTON_DOMAIN = "https://mail.proton.me/"
-const PROTON_DOMAIN_MAIL = "mail.proton.me"
-const PROTON_DOMAIN_INBOX = "inbox"
+const PROTON_DOMAIN = "https://mail.proton.me/";
 
-// 5 minutes
-const UPDATE_FREQUENCY = 5 * 60 * 1000
+const ALARM_NAME = "checkUnreadCount";
+const ALARM_TIME_MINUTES = 5;
 
 importScripts('core.js');
 let updateTimer;
 
 chrome.runtime.onInstalled.addListener(() => {
-    console.log("onInstalled");
     showStoredCount();
-    reloadCountInBackground();
-    setInterval(reloadCountInBackground, UPDATE_FREQUENCY);
+    checkOrCreateAlarm();
+});
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  checkOrCreateAlarm()
+  await updateCountAndShowBadge();
+});
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  checkOrCreateAlarm()
+  await updateCountAndShowBadge();
 });
 
 chrome.action.onClicked.addListener((tab) => {
   chrome.tabs.create({ url: PROTON_DOMAIN });
 });
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-	await updateCountAndShowBadge();
-});
+function checkOrCreateAlarm(){
+  chrome.alarms.get(ALARM_NAME, function(alarm) {
+    if (!alarm) {
+        chrome.alarms.create(ALARM_NAME, {
+            when: Date.now(),
+            periodInMinutes: ALARM_TIME_MINUTES
+        });
+    }else{
+      console.log("Alarm exists "+JSON.stringify(alarm))
+    }
+  });
+}
 
-chrome.tabs.onCreated.addListener(async tab => {
-    await updateCountAndShowBadge();
-});
+// event: alarm raised
+function onAlarm(alarm) {
+  if(alarm.name == ALARM_NAME){
+      console.log("Refresh triggerd "+Date.now())
+      reloadCountInBackground();
+  }
+}
 
+chrome.alarms.onAlarm.addListener(onAlarm);
