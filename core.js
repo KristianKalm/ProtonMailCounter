@@ -1,3 +1,5 @@
+let inboxTitleLoadingTimeoutId;
+
 getAllTabs = async () => {
     const query = {
         currentWindow: true
@@ -15,16 +17,14 @@ getAllTabs = async () => {
     return tabs;
 }
 
-
-
-const showBadge = async (count) => {
+showBadge = async (count) => {
     clearTimeout(inboxTitleLoadingTimeoutId);
     await chrome.action.setBadgeBackgroundColor({ color: '#6d4aff' });
     await chrome.action.setBadgeTextColor({ color: '#fff' });
     await chrome.action.setBadgeText({ text: count.toString() });
 };
 
-showStoredCount = async () => {
+showCountFromStorage = async () => {
     CountStorage.getCount((savedCount) => {
         if (savedCount !== null && savedCount !== 0) {
             showBadge(savedCount);
@@ -44,13 +44,27 @@ isProtonMailTabOpen = async () => {
     return matchedTab
 }
 
-const LOADING_TIME_FOR_PROTON_MAIL_INBOX = 5000;
-reloadCountInBackground = async () => {
+checkOrCreateAlarm = async () => {
+    chrome.alarms.get(ALARM_NAME, function (alarm) {
+        if (!alarm) {
+            chrome.alarms.create(ALARM_NAME, {
+                when: Date.now(),
+                periodInMinutes: ALARM_TIME_MINUTES
+            });
+        } else {
+            let time = new Date(alarm.scheduledTime);
+            console.log("Alarm exists " + time.toLocaleString())
+        }
+    });
+}
+
+refreshCountInBackground = async () => {
     let inboxOpened = await isProtonMailTabOpen()
-    if(inboxOpened){
+    if (inboxOpened) {
+        console.log("Background tab skipped, inbox is open already");
         return;
     }
-    chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         if (tabs.length > 0) {
             try {
                 chrome.tabs.create({
@@ -59,34 +73,34 @@ reloadCountInBackground = async () => {
                     active: false
                 }, (tab) => {
                     console.log("Backgroud tab opened");
-                    if (chrome.runtime.lastError) {
-                        console.error(`Error creating tab: ${chrome.runtime.lastError.message}`);
-                        return;
-                    }
                     if (!tab) {
-                        console.error('Tab is undefined');
+                        console.error('Backgroud tab is undefined');
                         return;
                     }
-                    const tabId = tab.id;
-                    setTimeout(() => {
-                        if (chrome.runtime.lastError) {
-                            console.error(`Error creating tab: ${chrome.runtime.lastError.message}`);
-                            return;
-                        }
-                        console.log("Backgroud tab closed");
-                        updateCountAndShowBadge();
-                        chrome.tabs.remove(tabId);
-                    }, LOADING_TIME_FOR_PROTON_MAIL_INBOX);
+                    closeTab(tab.id)
                 });
-            }
-            catch (error) {
+            } catch (error) {
                 console.error("An error occurred:", error);
             }
         } else {
-          console.log("No active tab found.");
+            console.log("No active tab found.");
         }
-      });
+    });
+}
 
+closeTab = async (tabId) => {
+    try {
+        await delay(LOADING_TIME_FOR_PROTON_MAIL_INBOX);
+        if (chrome.runtime.lastError) {
+            console.error(`Error creating tab: ${chrome.runtime.lastError.message}`);
+            return;
+        }
+        updateCountAndShowBadge();
+        chrome.tabs.remove(tabId);
+        console.log("Backgroud tab closed");
+    } catch (error) {
+        console.error("Error closing background tab:", error);
+    }
 }
 
 updateCountAndShowBadge = async () => {
@@ -109,9 +123,8 @@ updateCountAndShowBadge = async () => {
         else {
             showBadge(count);
         }
-    }
-    else {
-        showStoredCount()
+    } else {
+        showCountFromStorage()
     }
 }
 
@@ -119,12 +132,11 @@ function parseUnreadCountFromTabTitle(text) {
     const match = text.match(/\((\d+)\)/);
     return match ? parseInt(match[1], 10) : 0;
 }
-function isCurrentTabProtonMailInbox(url){
+
+function isCurrentTabProtonMailInbox(url) {
     return url.includes("mail.proton.me") && url.includes("inbox")
 }
 
-const LOADING_TIME_FOR_INBOX_TITLE_UPDATE = 1000;
-let inboxTitleLoadingTimeoutId;
 const clearBadge = async (count) => {
     if (inboxTitleLoadingTimeoutId) {
         clearTimeout(inboxTitleLoadingTimeoutId);
@@ -134,26 +146,3 @@ const clearBadge = async (count) => {
     }, LOADING_TIME_FOR_INBOX_TITLE_UPDATE);
 };
 
-class CountStorage {
-    static UNREAD_COUNT_KEY = 'proton_unread_count';
-    static getCount(callback) {
-        chrome.storage.local.get([CountStorage.UNREAD_COUNT_KEY], (result) => {
-            const count = result[CountStorage.UNREAD_COUNT_KEY];
-            if (typeof count === 'undefined') {
-                callback(0);
-            }
-            else {
-                callback(count);
-            }
-        });
-    }
-
-    static saveCount(count) {
-        chrome.storage.local.set({
-            [CountStorage.UNREAD_COUNT_KEY]: count
-        }, (error) => {});
-    }
-    static clearCount() {
-        chrome.storage.local.remove([CountStorage.UNREAD_COUNT_KEY], (error) => {});
-    }
-}
