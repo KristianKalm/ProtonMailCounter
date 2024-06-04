@@ -88,6 +88,8 @@ refreshCountInBackground = async () => {
     });
 }
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 closeTab = async (tabId) => {
     try {
         await delay(LOADING_TIME_FOR_PROTON_MAIL_INBOX);
