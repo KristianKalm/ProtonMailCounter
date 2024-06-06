@@ -1,3 +1,5 @@
+Available at [Chrome Web Store](https://chromewebstore.google.com/detail/protonmailcounter/mjmiahcanlbfeogbmcmclefnddghdjab)  
+
 Simple extension to show Proton mail unread count.
 
 Currently updates on background every 15 minutes by launching proton mail tab and loading the unread count.
